@@ -1,0 +1,19 @@
+{
+  "name": "horda-de-hierro-online",
+  "version": "0.1.0",
+  "description": "Shooter de bloques estilo Counter contra hordas de zombies, con multijugador por salas (Node.js + Socket.IO).",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.22.3",
+    "socket.io": "^4.8.4"
+  }
+}
