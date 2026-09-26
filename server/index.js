@@ -21,10 +21,25 @@ app.use(express.static(fileURLToPath(new URL('../public', import.meta.url))));
 // ¿cómo obtengo rápido a todos sus jugadores y el último estado de cada uno?
 // const salas = ...
 // ---------------------------------------------------------------------------
-
+const salas = new Map();
 io.on('connection', (socket) => {
   console.log(`[+] conectado ${socket.id}`);
+  let sala = null;
 
+  socket.on('sala:unirse', ({ room, name, skin, map }) => {
+    sala = room;
+    socket.join(sala);
+    if (!salas.has(sala)) salas.set(sala, new Map());
+    salas.get(sala).set(socket.id, { name, skin, map });
+    socket.emit('sala:bienvenida', { id: socket.id, jugadores: Object.fromEntries(salas.get(sala)) });
+    console.log(`${name} entró a la sala ${sala}`);
+  });
+
+  socket.on('jugador:estado', (estado) => {
+    if (!sala) return;
+    salas.get(sala).set(socket.id, estado);
+    socket.to(sala).emit('jugador:estado', { id: socket.id, estado });
+  });
   // TODO 1: 'sala:unirse'  → valida el código, mete el socket en la sala
   //         (socket.join) y respóndele SOLO a él con 'sala:bienvenida'.
 

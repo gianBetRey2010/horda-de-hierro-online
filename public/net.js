@@ -11,22 +11,38 @@
 //   HORDA.isPlaying()           true si estás en partida (o en pausa).
 
 (() => {
-  // Si abres index.html sin el servidor, `io` no existe: el juego sigue en modo un jugador.
   if (typeof io === 'undefined' || !window.HORDA) return;
 
   const socket = io({ autoConnect: false });
+  let timer = null;
 
   HORDA.onPlay(({ name, room, map, skin }) => {
-    if (!room) return; // un jugador
-    // TODO A: conéctate y pide entrar a la sala.
-    // TODO B: cada ~50 ms manda tu estado. (¿Qué pasa si lo mandas en cada frame?)
+    if (!room) return;
+    socket.connect();
+    socket.emit('sala:unirse', { room, name, skin, map });
+    timer = setInterval(() => {
+      if (HORDA.isPlaying()) socket.volatile.emit('jugador:estado', HORDA.getLocalState());
+    }, 50);
+    HORDA.setStatus(`Sala ${room}`);
   });
 
-  // TODO C: 'sala:bienvenida' → dibuja a los que ya estaban.
-  // TODO D: 'jugador:estado'  → HORDA.upsertRemote(...)
-  // TODO E: 'jugador:salio'   → HORDA.removeRemote(...)
+  // ★ Al entrar, dibuja a los que ya estaban (aunque estén quietos)
+  socket.on('sala:bienvenida', ({ id, jugadores }) => {
+    for (const [otroId, estado] of Object.entries(jugadores)) {
+      if (otroId !== id && estado.x !== undefined) HORDA.upsertRemote(otroId, estado);
+    }
+  });
 
+  socket.on('jugador:estado', ({ id, estado }) => HORDA.upsertRemote(id, estado));
+
+  // ★ Cuando alguien se va, sácalo de la escena
+  socket.on('jugador:salio', ({ id }) => HORDA.removeRemote(id));
+
+  // ★ Al volver al menú: dejar de enviar y desconectarse
   HORDA.onMenu(() => {
-    // TODO F: deja de mandar estado, desconéctate y limpia a los demás.
+    clearInterval(timer);
+    socket.disconnect();
+    HORDA.clearRemotes();
+    HORDA.setStatus('');
   });
 })();
